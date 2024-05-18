@@ -5,10 +5,8 @@ kind: ServiceAccount
 metadata:
   name: {{ .Values.cartService.name }}
   namespace: {{.Release.Namespace}}
-  {{- with .Values.serviceAccounts.annotations }}
   annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+    eks.amazonaws.com/role-arn: arn:aws:iam::{{ .Values.awsAccountId }}:role/{{ .Values.cartService.iamRoleName }}
 ---
 {{- end }}
 apiVersion: apps/v1
@@ -22,20 +20,10 @@ spec:
       app: {{ .Values.cartService.name }}
   template:
     metadata:
-      {{- if .Values.cartDatabase.externalRedisTlsOrigination.enable }}
-      annotations:
-        sidecar.istio.io/userVolumeMount: '[{"name": "{{ .Values.cartDatabase.externalRedisTlsOrigination.name }}", "mountPath": "/etc/certs", "readonly": true}]'
-        sidecar.istio.io/userVolume: '[{"name": "{{ .Values.cartDatabase.externalRedisTlsOrigination.name }}", "secret": {"secretName": "{{ .Values.cartDatabase.externalRedisTlsOrigination.name }}"}}]'
-        proxy.istio.io/config: '{"holdApplicationUntilProxyStarts": true}'
-      {{- end }}
       labels:
         app: {{ .Values.cartService.name }}
     spec:
-      {{- if .Values.serviceAccounts.create }}
       serviceAccountName: {{ .Values.cartService.name }}
-      {{- else }}
-      serviceAccountName: default
-      {{- end }}
       terminationGracePeriodSeconds: 5
       securityContext:
         fsGroup: 1000
@@ -59,11 +47,7 @@ spec:
         ports:
         - containerPort: 7070
         env:
-        {{- if eq .Values.cartDatabase.type "spanner" }}
-        - name: SPANNER_CONNECTION_STRING
-        {{- else }}
         - name: REDIS_ADDR
-        {{- end }}
           value: {{ .Values.cartDatabase.connectionString | quote }}
         resources:
           {{- toYaml .Values.cartService.resources | nindent 10 }}

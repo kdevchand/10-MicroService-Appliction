@@ -5,12 +5,8 @@ kind: ServiceAccount
 metadata:
   name: {{ .Values.checkoutService.name }}
   namespace: {{.Release.Namespace}}
-  {{- if not .Values.serviceAccounts.annotationsOnlyForCartservice }}
-  {{- with .Values.serviceAccounts.annotations }}
   annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-  {{- end }}
+    eks.amazonaws.com/role-arn: arn:aws:iam::{{ .Values.awsAccountId }}:role/{{ .Values.checkoutService.iamRoleName }}
 ---
 {{- end }}
 apiVersion: apps/v1
@@ -27,11 +23,7 @@ spec:
       labels:
         app: {{ .Values.checkoutService.name }}
     spec:
-      {{- if .Values.serviceAccounts.create }}
       serviceAccountName: {{ .Values.checkoutService.name }}
-      {{- else }}
-      serviceAccountName: default
-      {{- end }}
       securityContext:
         fsGroup: 1000
         runAsGroup: 1000
